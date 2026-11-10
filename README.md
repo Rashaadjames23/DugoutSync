@@ -1,0 +1,2 @@
+# DugoutSync
+Practice Planner
