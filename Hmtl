@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaseSync - Baseball Practice Segment Clock</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        baseball: {
+                            50: '#fdf8f6',
+                            100: '#fbe8e4',
+                            500: '#d9534f',
+                            600: '#c9302c',
+                            700: '#ac2925',
+                            850: '#1b2430',
+                            900: '#0f172a',
+                            950: '#090d16'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Chivo -->
+    <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-sport { font-family: 'Chivo', sans-serif; }
+        .timer-glow { text-shadow: 0 0 25px rgba(217, 83, 79, 0.4); }
+    </style>
+</head>
+<body class="bg-baseball-950 text-gray-100 min-h-screen flex flex-col selection:bg-baseball-500 selection:text-white">
+
+    <!-- Toast Notification Banner -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-500">
+        <i class="fa-solid fa-circle-check text-xl"></i>
+        <div>
+            <h4 class="font-bold text-sm" id="toast-title">Success</h4>
+            <p class="text-xs text-emerald-100" id="toast-msg">Action completed successfully.</p>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-baseball-900 border-b border-gray-800 sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-baseball-500 text-white p-2.5 rounded-xl shadow-lg flex items-center justify-center">
+                    <i class="fa-solid fa-baseball text-2xl animate-spin-slow"></i>
+                </div>
+                <div>
+                    <h1 class="font-sport text-2xl tracking-wider text-white uppercase flex items-center gap-2">
+                        BaseSync <span class="text-xs bg-baseball-500/20 text-baseball-500 border border-baseball-500/30 px-2 py-0.5 rounded-full font-normal">Pro Coach</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">Live Synchronized Practice Segment Clock</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs & Coach Selector -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Coach Selector Dropdown -->
+                <div class="relative">
+                    <select id="active-coach-select" onchange="switchCoach(this.value)" class="bg-baseball-850 border border-gray-700 text-sm rounded-xl px-3 py-2 text-white font-medium focus:outline-none focus:border-baseball-500 transition cursor-pointer">
+                        <option value="" disabled>Select Your Name:</option>
+                        <option value="Nolan">Nolan</option>
+                        <option value="Ryan">Ryan</option>
+                        <option value="Rashaad">Rashaad</option>
+                        <option value="Collin">Collin</option>
+                        <option value="Christian">Christian</option>
+                        <option value="Chris">Chris</option>
+                        <option value="Jaxon">Jaxon</option>
+                    </select>
+                </div>
+
+                <!-- Tab Buttons -->
+                <nav class="flex space-x-1 bg-baseball-850 p-1.5 rounded-xl border border-gray-800">
+                    <button onclick="switchTab('field')" id="tab-btn-field" class="px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-baseball-500 text-white shadow">
+                        <i class="fa-solid fa-stopwatch"></i> <span class="hidden md:inline">Field View</span>
+                    </button>
+                    <button onclick="handleCreatorTabClick()" id="tab-btn-creator" class="px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-gray-400 hover:text-white cursor-pointer">
+                        <i class="fa-solid fa-lock" id="creator-lock-icon"></i> <span class="hidden md:inline">Creator</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ================= FIELD VIEW TAB ================= -->
+        <div id="tab-field" class="space-y-6">
+            
+            <!-- Top Control Banner & Master Timer -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Master Segment Timer Card -->
+                <div class="lg:col-span-7 bg-gradient-to-br from-baseball-900 to-baseball-850 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col justify-between">
+                    <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+                        <i class="fa-solid fa-baseball text-9xl"></i>
+                    </div>
+
+                    <!-- Current Drill Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-gray-800">
+                        <div>
+                            <span class="text-xs font-bold tracking-widest text-baseball-500 uppercase bg-baseball-500/10 px-3 py-1 rounded-full border border-baseball-500/20" id="current-drill-index-badge">Drill 1 of 5</span>
+                            <h2 class="font-sport text-2xl sm:text-3xl text-white mt-2" id="current-drill-title">Infield Ground Balls & Double Plays</h2>
+                        </div>
+                        <div class="text-right flex sm:flex-col items-center sm:items-end justify-between">
+                            <span class="text-xs text-gray-400">Scheduled Time</span>
+                            <span class="text-lg font-bold text-gray-200" id="current-drill-duration">10:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Timer Countdown Display -->
+                    <div class="py-8 text-center my-auto">
+                        <div class="font-sport text-6xl sm:text-8xl tracking-wider text-white timer-glow font-black" id="timer-display">
+                            10:00
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2 flex items-center justify-center gap-2">
+                            <span id="timer-status-indicator" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span id="timer-status-text">Ready to Start Practice</span>
+                        </p>
+                    </div>
+
+                    <!-- Timer Control Bar -->
+                    <div class="flex flex-wrap items-center justify-center gap-3 pt-4 border-t border-gray-800">
+                        <button onclick="toggleTimer()" id="btn-toggle-timer" class="flex-1 min-w-[120px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base">
+                            <i class="fa-solid fa-play" id="play-pause-icon"></i> <span id="play-pause-text">Start Drill</span>
+                        </button>
+                        <button onclick="resetTimer()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-3 px-5 rounded-xl transition flex items-center gap-2" title="Reset Current Drill Timer">
+                            <i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">Reset</span>
+                        </button>
+                        <button onclick="prevDrill()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-3 px-5 rounded-xl transition flex items-center gap-2" title="Previous Drill">
+                            <i class="fa-solid fa-backward-step"></i> <span class="hidden sm:inline">Prev</span>
+                        </button>
+                        <button onclick="nextDrill()" class="bg-baseball-500 hover:bg-baseball-600 text-white font-semibold py-3 px-5 rounded-xl shadow-lg transition flex items-center gap-2" title="Next Drill">
+                            <span class="hidden sm:inline">Next</span> <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- My Personal Coach Card (Highlighted for logged-in coach) -->
+                <div class="lg:col-span-5 bg-gradient-to-br from-baseball-900 to-baseball-850 border border-baseball-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between relative">
+                    <div class="absolute top-6 right-6">
+                        <span class="bg-baseball-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">My Station</span>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-12 h-12 rounded-2xl bg-baseball-500/20 border border-baseball-500/40 text-baseball-500 flex items-center justify-center font-sport text-xl font-bold" id="my-coach-initial">
+                                N
+                            </div>
+                            <div class="flex-grow">
+                                <h3 class="text-xs uppercase tracking-widest text-gray-400 font-semibold">Active Coach Profile</h3>
+                                <h2 class="text-2xl font-bold text-white flex items-center justify-between">
+                                    <span id="my-coach-name">Nolan</span>
+                                    <!-- Personal Coach Toggle Stopwatch/Timer Badge -->
+                                    <span class="text-sm font-mono bg-baseball-950 px-3 py-1 rounded-xl border border-baseball-500/40 text-baseball-400" id="my-personal-timer-display">00:00</span>
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div class="bg-baseball-950/60 rounded-2xl p-5 border border-gray-800 my-4 space-y-3">
+                            <div>
+                                <span class="text-xs text-baseball-500 font-bold uppercase tracking-wider">Assigned Role & Station</span>
+                                <p class="text-lg font-semibold text-white mt-1" id="my-coach-role">Infield Lead / Fungo Hitter</p>
+                            </div>
+                            <div class="pt-3 border-t border-gray-800/80">
+                                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Drill Description & Instructions</span>
+                                <p class="text-sm text-gray-300 mt-1 leading-relaxed" id="current-drill-desc">Hit grounders to short and third. Focus on double play footwork at second base. outfielders shagging.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Coach Timer Controls -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button onclick="toggleMyPersonalTimer()" id="my-personal-timer-btn" class="flex-1 bg-baseball-500 hover:bg-baseball-600 text-white font-semibold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-play" id="my-personal-timer-icon"></i> <span id="my-personal-timer-btn-text">Start My Timer</span>
+                        </button>
+                        <button onclick="resetMyPersonalTimer()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2.5 px-4 rounded-xl transition flex items-center gap-2 text-sm" title="Reset Personal Stopwatch">
+                            <i class="fa-solid fa-rotate-right"></i> Reset
+                        </button>
+                    </div>
+
+                    <div class="bg-baseball-500/10 border border-baseball-500/20 rounded-xl p-3 mt-3 flex items-center gap-3">
+                        <i class="fa-solid fa-bullhorn text-baseball-500 text-lg"></i>
+                        <p class="text-xs text-baseball-200">Personal timers can be toggled independently by each coach.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Two-Column Breakdown: Timeline & All Coaches Overview -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Practice Timeline / Drill Queue -->
+                <div class="lg:col-span-7 bg-baseball-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                        <h3 class="font-sport text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-baseball-500"></i> Practice Timeline
+                        </h3>
+                        <span class="text-xs text-gray-400" id="total-practice-duration">Total: 55 mins</span>
+                    </div>
+
+                    <div class="space-y-3 max-h-[450px] overflow-y-auto pr-1" id="drills-timeline-list">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- All Coaches Assignments Overview -->
+                <div class="lg:col-span-5 bg-baseball-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                        <h3 class="font-sport text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users text-baseball-500"></i> All Coach Roles & Personal Timers
+                        </h3>
+                        <span class="text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-lg">7 Coaches</span>
+                    </div>
+
+                    <div class="space-y-2.5 max-h-[450px] overflow-y-auto pr-1" id="all-coaches-roles-list">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= CREATOR TAB ================= -->
+        <div id="tab-creator" class="hidden space-y-6">
+            
+            <!-- Admin PIN Protection Banner / Card -->
+            <div id="creator-auth-card" class="bg-baseball-900 border border-gray-800 rounded-3xl p-8 max-w-md mx-auto shadow-2xl text-center">
+                <div class="w-16 h-16 bg-baseball-500/20 text-baseball-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-baseball-500/30">
+                    <i class="fa-solid fa-lock text-3xl"></i>
+                </div>
+                <h2 class="font-sport text-2xl text-white">Creator Access Required</h2>
+                <p class="text-sm text-gray-400 mt-2 mb-6">Enter the master PIN to manage drills, durations, and coach assignments.</p>
+                
+                <form onsubmit="authenticateCreator(event)" class="space-y-4">
+                    <div>
+                        <input type="password" id="creator-pin-input" placeholder="Enter PIN (1775)" class="w-full bg-baseball-850 border border-gray-700 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white focus:outline-none focus:border-baseball-500 transition" required>
+                    </div>
+                    <button type="submit" class="w-full bg-baseball-500 hover:bg-baseball-600 text-white font-bold py-3 rounded-xl shadow-lg transition">
+                        Unlock Creator Mode
+                    </button>
+                </form>
+                <p class="text-xs text-gray-500 mt-4">Master PIN is <code class="text-baseball-500 font-mono">1775</code></p>
+            </div>
+
+            <!-- Unlocked Creator Management Dashboard -->
+            <div id="creator-dashboard" class="hidden space-y-6">
+                
+                <!-- Action Bar -->
+                <div class="bg-baseball-900 border border-gray-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-emerald-500/20 text-emerald-400 p-2 rounded-xl border border-emerald-500/30">
+                            <i class="fa-solid fa-unlock text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white">Creator Mode Active</h3>
+                            <p class="text-xs text-gray-400">Customize practice structure and drill assignments</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="openAddDrillModal()" class="bg-baseball-500 hover:bg-baseball-600 text-white font-semibold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus"></i> Add New Drill
+                        </button>
+                        <button onclick="resetToDefaultTemplate()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-rotate"></i> Reset Default Practice
+                        </button>
+                        <button onclick="lockCreatorMode()" class="bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600/30 font-semibold px-4 py-2.5 rounded-xl transition text-sm">
+                            Lock Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drills Editor List -->
+                <div class="bg-baseball-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
+                    <h3 class="font-sport text-xl text-white mb-4 pb-3 border-b border-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-list-timeline text-baseball-500"></i> Practice Drills & Coach Assignments Editor
+                    </h3>
+
+                    <div class="space-y-4" id="creator-drills-list">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal: Edit / Add Drill -->
+    <div id="drill-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-baseball-900 border border-gray-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-800 mb-6">
+                <h3 class="font-sport text-xl text-white" id="modal-title">Add / Edit Drill</h3>
+                <button onclick="closeDrillModal()" class="text-gray-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="drill-form" onsubmit="saveDrill(event)" class="space-y-5">
+                <input type="hidden" id="edit-drill-id">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Drill Title</label>
+                        <input type="text" id="form-title" class="w-full bg-baseball-850 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-baseball-500 font-medium" required placeholder="e.g., Live Batting Practice">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Duration (Minutes)</label>
+                        <input type="number" id="form-duration" min="1" max="120" class="w-full bg-baseball-850 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-baseball-500 font-medium" required value="10">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Drill Description & Instructions</label>
+                    <textarea id="form-desc" rows="3" class="w-full bg-baseball-850 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-baseball-500 text-sm" placeholder="Detailed coaching points, equipment needed, rotation rules..."></textarea>
+                </div>
+
+                <!-- Coach Roles Assignment Section -->
+                <div>
+                    <h4 class="font-sport text-sm text-baseball-500 uppercase tracking-wider mb-3">Coach Role Assignments for this Drill</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-baseball-950/50 p-4 rounded-2xl border border-gray-800" id="form-roles-container">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-800">
+                    <button type="button" onclick="closeDrillModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-5 py-2.5 rounded-xl transition">Cancel</button>
+                    <button type="submit" class="bg-baseball-500 hover:bg-baseball-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg transition">Save Drill</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Coach list as specified
+        const COACHES = ["Nolan", "Ryan", "Rashaad", "Collin", "Christian", "Chris", "Jaxon"];
+
+        // Default Practice Data Structure
+        const DEFAULT_PRACTICE = [
+            {
+                id: 1,
+                title: "Infield Ground Balls & Double Plays",
+                durationMin: 10,
+                description: "Hit grounders to short and third. Focus on double play footwork at second base. outfielders shagging.",
+                roles: {
+                    "Nolan": "Infield Lead / Fungo Hitter",
+                    "Ryan": "Second Base Feed Evaluator",
+                    "Rashaad": "First Base Receiving Coach",
+                    "Collin": "Outfield Shagging Supervisor",
+                    "Christian": "Baserunner Starter",
+                    "Chris": "Video / Mechanics Analyst",
+                    "Jaxon": "Equipment & Balls Manager"
+                }
+            },
+            {
+                id: 2,
+                title: "Outfield Drop Steps & Relay Throws",
+                durationMin: 10,
+                description: "Working on tracking deep fly balls over shoulder and hitting the cutoff man cleanly.",
+                roles: {
+                    "Nolan": "Outfield Lead Instructor",
+                    "Ryan": "Cutoff Man 1",
+                    "Rashaad": "Cutoff Man 2",
+                    "Collin": "Fungo Hitter for Outfielders",
+                    "Christian": "Base Runner",
+                    "Chris": "Safety & Hydration",
+                    "Jaxon": "Ball Retrieval"
+                }
+            },
+            {
+                id: 3,
+                title: "Live Batting Practice (BP)",
+                durationMin: 15,
+                description: "Pitchers throwing live simulated innings while hitters execute situational hitting.",
+                roles: {
+                    "Nolan": "Plate Umpire / Pitching Coach",
+                    "Ryan": "Hitter Rotation Coordinator",
+                    "Rashaad": "Infield Defensive Coach",
+                    "Collin": "Outfield Defensive Coach",
+                    "Christian": "Pitcher Warmup Coordinator",
+                    "Chris": "Pitch Velocity & Metrics",
+                    "Jaxon": "Catcher & Gear Manager"
+                }
+            },
+            {
+                id: 4,
+                title: "Bunt Defense & First-and-Third Plays",
+                durationMin: 10,
+                description: "Practicing sacrifice bunt defensive coverages, pitcher fielding bunts, and runner rundowns.",
+                roles: {
+                    "Nolan": "Defensive Alignment Director",
+                    "Ryan": "Pitcher Defense Instructor",
+                    "Rashaad": "Catcher Positioning Coach",
+                    "Collin": "Third Base Coverage Lead",
+                    "Christian": "Bunt Battering / Runner",
+                    "Chris": "Observer & Timer",
+                    "Jaxon": "Cone & Prop Setup"
+                }
+            },
+            {
+                id: 5,
+                title: "Team Baserunning & Conditioning",
+                durationMin: 10,
+                description: "Aggressive base running, secondary leads, stealing reads, and home-to-first sprints.",
+                roles: {
+                    "Nolan": "Third Base Coach / Lead",
+                    "Ryan": "First Base Coach",
+                    "Rashaad": "Home Plate Starter",
+                    "Collin": "Baserunner Timer",
+                    "Christian": "Conditioning Lead",
+                    "Chris": "Hydration Coordinator",
+                    "Jaxon": "Field Equipment Cleanup"
+                }
+            }
+        ];
+
+        // App State
+        let state = {
+            activeCoach: "Nolan",
+            currentTab: "field",
+            isCreatorAuthenticated: false,
+            currentDrillIndex: 0,
+            timerSecondsRemaining: 600, // 10 mins default
+            timerRunning: false,
+            drills: JSON.parse(JSON.stringify(DEFAULT_PRACTICE)),
+            personalTimers: {
+                "Nolan": { seconds: 0, running: false },
+                "Ryan": { seconds: 0, running: false },
+                "Rashaad": { seconds: 0, running: false },
+                "Collin": { seconds: 0, running: false },
+                "Christian": { seconds: 0, running: false },
+                "Chris": { seconds: 0, running: false },
+                "Jaxon": { seconds: 0, running: false }
+            }
+        };
+
+        let masterTimerInterval = null;
+        let personalTimerInterval = null;
+
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            initCoachSelect();
+            renderApp();
+            startGlobalIntervals();
+        });
+
+        // Local Storage Sync (Simulates multi-coach real-time sync across devices/tabs)
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('basesync_state', JSON.stringify({
+                    currentDrillIndex: state.currentDrillIndex,
+                    timerSecondsRemaining: state.timerSecondsRemaining,
+                    timerRunning: state.timerRunning,
+                    drills: state.drills,
+                    personalTimers: state.personalTimers,
+                    isCreatorAuthenticated: state.isCreatorAuthenticated
+                }));
+            } catch(e) { console.error(e); }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('basesync_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state.currentDrillIndex = parsed.currentDrillIndex ?? 0;
+                    state.timerSecondsRemaining = parsed.timerSecondsRemaining ?? (state.drills[state.currentDrillIndex]?.durationMin * 60 || 600);
+                    state.timerRunning = parsed.timerRunning ?? false;
+                    state.drills = parsed.drills ?? DEFAULT_PRACTICE;
+                    state.personalTimers = parsed.personalTimers ?? state.personalTimers;
+                    state.isCreatorAuthenticated = parsed.isCreatorAuthenticated ?? false;
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Global interval ticker for master timer & personal stopwatches
+        function startGlobalIntervals() {
+            setInterval(() => {
+                let updated = false;
+
+                // Master timer countdown
+                if (state.timerRunning && state.timerSecondsRemaining > 0) {
+                    state.timerSecondsRemaining--;
+                    if (state.timerSecondsRemaining <= 0) {
+                        state.timerRunning = false;
+                        showToast("Drill Complete!", "The current practice segment has finished.", "emerald");
+                    }
+                    updated = true;
+                }
+
+                // Personal timers (Count up stopwatches)
+                COACHES.forEach(coach => {
+                    if (state.personalTimers[coach] && state.personalTimers[coach].running) {
+                        state.personalTimers[coach].seconds++;
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    saveToLocalStorage();
+                    updateUIOnly();
+                }
+            }, 1000);
+
+            // Poll localStorage every 1.5s for multi-device/tab sync
+            setInterval(() => {
+                try {
+                    const saved = localStorage.getItem('basesync_state');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        let needsRerender = false;
+                        if (parsed.currentDrillIndex !== state.currentDrillIndex ||
+                            parsed.timerRunning !== state.timerRunning ||
+                            JSON.stringify(parsed.drills) !== JSON.stringify(state.drills)) {
+                            needsRerender = true;
+                        }
+                        state.currentDrillIndex = parsed.currentDrillIndex;
+                        state.timerSecondsRemaining = parsed.timerSecondsRemaining;
+                        state.timerRunning = parsed.timerRunning;
+                        state.drills = parsed.drills;
+                        state.personalTimers = parsed.personalTimers;
+                        if (needsRerender) {
+                            renderApp();
+                        } else {
+                            updateUIOnly();
+                        }
+                    }
+                } catch(e) {}
+            }, 1500);
+        }
+
+        function initCoachSelect() {
+            const select = document.getElementById('active-coach-select');
+            if (select) select.value = state.activeCoach;
+        }
+
+        function switchCoach(coachName) {
+            state.activeCoach = coachName;
+            renderApp();
+            showToast("Coach Switched", `Active profile is now ${coachName}`, "emerald");
+        }
+
+        // Tab Switching & Creator Handler
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            const fieldTab = document.getElementById('tab-field');
+            const creatorTab = document.getElementById('tab-creator');
+            const btnField = document.getElementById('tab-btn-field');
+            const btnCreator = document.getElementById('tab-btn-creator');
+
+            if (tabId === 'field') {
+                fieldTab.classList.remove('hidden');
+                creatorTab.classList.add('hidden');
+                btnField.className = "px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-baseball-500 text-white shadow";
+                btnCreator.className = "px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-gray-400 hover:text-white cursor-pointer";
+            } else {
+                fieldTab.classList.add('hidden');
+                creatorTab.classList.remove('hidden');
+                btnCreator.className = "px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-baseball-500 text-white shadow";
+                btnField.className = "px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-gray-400 hover:text-white cursor-pointer";
+            }
+            renderCreatorState();
+        }
+
+        function handleCreatorTabClick() {
+            switchTab('creator');
+        }
+
+        // Authentication for Creator Mode (PIN: 1775)
+        function authenticateCreator(event) {
+            event.preventDefault();
+            const pin = document.getElementById('creator-pin-input').value.trim();
+            if (pin === "1775") {
+                state.isCreatorAuthenticated = true;
+                saveToLocalStorage();
+                renderCreatorState();
+                showToast("Unlocked", "Creator mode successfully unlocked.", "emerald");
+            } else {
+                showToast("Access Denied", "Incorrect PIN. Try 1775.", "red");
+                document.getElementById('creator-pin-input').value = "";
+            }
+        }
+
+        function lockCreatorMode() {
+            state.isCreatorAuthenticated = false;
+            saveToLocalStorage();
+            renderCreatorState();
+            showToast("Locked", "Creator mode locked securely.", "emerald");
+        }
+
+        function renderCreatorState() {
+            const authCard = document.getElementById('creator-auth-card');
+            const dashboard = document.getElementById('creator-dashboard');
+            const lockIcon = document.getElementById('creator-lock-icon');
+
+            if (state.isCreatorAuthenticated) {
+                authCard.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                lockIcon.className = "fa-solid fa-unlock text-emerald-400";
+                renderCreatorDrillsList();
+            } else {
+                authCard.classList.remove('hidden');
+                dashboard.classList.add('hidden');
+                lockIcon.className = "fa-solid fa-lock";
+            }
+        }
+
+        // Master Timer Actions
+        function toggleTimer() {
+            state.timerRunning = !state.timerRunning;
+            saveToLocalStorage();
+            renderApp();
+        }
+
+        function resetTimer() {
+            const currentDrill = state.drills[state.currentDrillIndex];
+            state.timerSecondsRemaining = (currentDrill ? currentDrill.durationMin : 10) * 60;
+            state.timerRunning = false;
+            saveToLocalStorage();
+            renderApp();
+            showToast("Timer Reset", "Drill timer reset to scheduled duration.", "emerald");
+        }
+
+        function nextDrill() {
+            if (state.currentDrillIndex < state.drills.length - 1) {
+                state.currentDrillIndex++;
+                const drill = state.drills[state.currentDrillIndex];
+                state.timerSecondsRemaining = drill.durationMin * 60;
+                state.timerRunning = false;
+                saveToLocalStorage();
+                renderApp();
+                showToast("Next Drill", drill.title, "emerald");
+            } else {
+                showToast("Practice Complete", "You have reached the final drill of practice!", "emerald");
+            }
+        }
+
+        function prevDrill() {
+            if (state.currentDrillIndex > 0) {
+                state.currentDrillIndex--;
+                const drill = state.drills[state.currentDrillIndex];
+                state.timerSecondsRemaining = drill.durationMin * 60;
+                state.timerRunning = false;
+                saveToLocalStorage();
+                renderApp();
+            }
+        }
+
+        function selectDrillIndex(index) {
+            if (index >= 0 && index < state.drills.length) {
+                state.currentDrillIndex = index;
+                const drill = state.drills[index];
+                state.timerSecondsRemaining = drill.durationMin * 60;
+                state.timerRunning = false;
+                saveToLocalStorage();
+                renderApp();
+            }
+        }
+
+        // Personal Coach Timer Actions
+        function toggleMyPersonalTimer() {
+            const coach = state.activeCoach;
+            if (!state.personalTimers[coach]) {
+                state.personalTimers[coach] = { seconds: 0, running: false };
+            }
+            state.personalTimers[coach].running = !state.personalTimers[coach].running;
+            saveToLocalStorage();
+            renderApp();
+        }
+
+        function resetMyPersonalTimer() {
+            const coach = state.activeCoach;
+            if (state.personalTimers[coach]) {
+                state.personalTimers[coach].seconds = 0;
+                state.personalTimers[coach].running = false;
+            }
+            saveToLocalStorage();
+            renderApp();
+            showToast("Personal Stopwatch Reset", `${coach}'s timer reset to 00:00`, "emerald");
+        }
+
+        function toggleCoachPersonalTimer(coachName) {
+            if (!state.personalTimers[coachName]) {
+                state.personalTimers[coachName] = { seconds: 0, running: false };
+            }
+            state.personalTimers[coachName].running = !state.personalTimers[coachName].running;
+            saveToLocalStorage();
+            renderApp();
+        }
+
+        function resetCoachPersonalTimer(coachName) {
+            if (state.personalTimers[coachName]) {
+                state.personalTimers[coachName].seconds = 0;
+                state.personalTimers[coachName].running = false;
+            }
+            saveToLocalStorage();
+            renderApp();
+        }
+
+        function formatTime(totalSeconds) {
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Rendering Main App UI
+        function renderApp() {
+            const currentDrill = state.drills[state.currentDrillIndex] || { title: "Custom Practice", durationMin: 10, description: "No description", roles: {} };
+            
+            // Master Timer Display
+            document.getElementById('timer-display').innerText = formatTime(state.timerSecondsRemaining);
+            document.getElementById('current-drill-index-badge').innerText = `Drill ${state.currentDrillIndex + 1} of ${state.drills.length}`;
+            document.getElementById('current-drill-title').innerText = currentDrill.title;
+            document.getElementById('current-drill-duration').innerText = `${currentDrill.durationMin}:00`;
+            document.getElementById('current-drill-desc').innerText = currentDrill.description;
+
+            const toggleBtn = document.getElementById('btn-toggle-timer');
+            const playPauseIcon = document.getElementById('play-pause-icon');
+            const playPauseText = document.getElementById('play-pause-text');
+            const statusIndicator = document.getElementById('timer-status-indicator');
+            const statusText = document.getElementById('timer-status-text');
+
+            if (state.timerRunning) {
+                toggleBtn.className = "flex-1 min-w-[120px] bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base";
+                playPauseIcon.className = "fa-solid fa-pause";
+                playPauseText.innerText = "Pause Drill";
+                statusIndicator.className = "w-3 h-3 rounded-full bg-amber-500 animate-pulse";
+                statusText.innerText = "Drill in Progress...";
+            } else {
+                toggleBtn.className = "flex-1 min-w-[120px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base";
+                playPauseIcon.className = "fa-solid fa-play";
+                playPauseText.innerText = "Start Drill";
+                statusIndicator.className = "w-3 h-3 rounded-full bg-gray-500";
+                statusText.innerText = "Drill Paused / Ready";
+            }
+
+            // My Coach Card
+            const myCoach = state.activeCoach;
+            document.getElementById('my-coach-name').innerText = myCoach;
+            document.getElementById('my-coach-initial').innerText = myCoach.charAt(0);
+            document.getElementById('my-coach-role').innerText = currentDrill.roles[myCoach] || "General Assistant / Support";
+            
+            const myTimer = state.personalTimers[myCoach] || { seconds: 0, running: false };
+            document.getElementById('my-personal-timer-display').innerText = formatTime(myTimer.seconds);
+            
+            const myTimerBtn = document.getElementById('my-personal-timer-btn');
+            const myTimerIcon = document.getElementById('my-personal-timer-icon');
+            const myTimerBtnText = document.getElementById('my-personal-timer-btn-text');
+
+            if (myTimer.running) {
+                myTimerBtn.className = "flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 text-sm";
+                myTimerIcon.className = "fa-solid fa-pause";
+                myTimerBtnText.innerText = "Pause My Timer";
+            } else {
+                myTimerBtn.className = "flex-1 bg-baseball-500 hover:bg-baseball-600 text-white font-semibold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 text-sm";
+                myTimerIcon.className = "fa-solid fa-play";
+                myTimerBtnText.innerText = "Start My Timer";
+            }
+
+            // Render Timeline list
+            renderTimelineList();
+
+            // Render All Coaches Roles & Personal Timers list
+            renderAllCoachesList();
+
+            if (state.isCreatorAuthenticated) {
+                renderCreatorDrillsList();
+            }
+        }
+
+        // Lightweight update for high-frequency ticker without DOM re-creation
+        function updateUIOnly() {
+            const timerEl = document.getElementById('timer-display');
+            if (timerEl) timerEl.innerText = formatTime(state.timerSecondsRemaining);
+
+            const myCoach = state.activeCoach;
+            const myTimerEl = document.getElementById('my-personal-timer-display');
+            const myTimer = state.personalTimers[myCoach] || { seconds: 0, running: false };
+            if (myTimerEl) myTimerEl.innerText = formatTime(myTimer.seconds);
+
+            // Update live individual timer displays in All Coaches list
+            COACHES.forEach(coach => {
+                const badge = document.getElementById(`coach-timer-${coach}`);
+                const coachTimerData = state.personalTimers[coach] || { seconds: 0, running: false };
+                if (badge) {
+                    badge.innerText = formatTime(coachTimerData.seconds);
+                    if (coachTimerData.running) {
+                        badge.className = "font-mono text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40";
+                    } else {
+                        badge.className = "font-mono text-xs px-2 py-0.5 rounded bg-baseball-950 text-gray-400 border border-gray-800";
+                    }
+                }
+            });
+        }
+
+        function renderTimelineList() {
+            const container = document.getElementById('drills-timeline-list');
+            let totalMins = state.drills.reduce((sum, d) => sum + d.durationMin, 0);
+            document.getElementById('total-practice-duration').innerText = `Total: ${totalMins} mins`;
+
+            container.innerHTML = state.drills.map((drill, index) => {
+                const isActive = index === state.currentDrillIndex;
+                const activeClasses = isActive 
+                    ? "bg-baseball-500/15 border-baseball-500/50 text-white shadow-lg" 
+                    : "bg-baseball-850/60 border-gray-800 text-gray-300 hover:bg-baseball-850";
+
+                return `
+                    <div onclick="selectDrillIndex(${index})" class="p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${activeClasses}">
+                        <div class="flex items-center space-x-3.5">
+                            <div class="w-8 h-8 rounded-xl ${isActive ? 'bg-baseball-500 text-white font-bold' : 'bg-gray-800 text-gray-400'} flex items-center justify-center text-xs">
+                                ${index + 1}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm sm:text-base flex items-center gap-2">
+                                    ${drill.title}
+                                    ${isActive ? '<span class="text-[10px] bg-baseball-500 text-white px-2 py-0.5 rounded-full font-normal">Active Now</span>' : ''}
+                                </h4>
+                                <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${drill.description}</p>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <span class="text-sm font-bold font-mono ${isActive ? 'text-baseball-400' : 'text-gray-300'}">${drill.durationMin}m</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAllCoachesList() {
+            const container = document.getElementById('all-coaches-roles-list');
+            const currentDrill = state.drills[state.currentDrillIndex] || { roles: {} };
+
+            container.innerHTML = COACHES.map(coach => {
+                const role = currentDrill.roles[coach] || "General Assistant";
+                const isMe = coach === state.activeCoach;
+                const coachTimer = state.personalTimers[coach] || { seconds: 0, running: false };
+
+                return `
+                    <div class="p-3.5 rounded-2xl border ${isMe ? 'bg-baseball-500/10 border-baseball-500/40' : 'bg-baseball-850/60 border-gray-800'} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-xl ${isMe ? 'bg-baseball-500 text-white' : 'bg-gray-800 text-gray-300'} flex items-center justify-center font-bold text-sm">
+                                ${coach.charAt(0)}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-white text-sm">${coach}</h4>
+                                    ${isMe ? '<span class="text-[10px] bg-baseball-500 text-white px-2 py-0.5 rounded-full">You</span>' : ''}
+                                </div>
+                                <p class="text-xs text-baseball-400 font-medium">${role}</p>
+                            </div>
+                        </div>
+
+                        <!-- Personal Coach Toggle Timer Control -->
+                        <div class="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-800">
+                            <span id="coach-timer-${coach}" class="font-mono text-xs px-2 py-0.5 rounded ${coachTimer.running ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-baseball-950 text-gray-400 border border-gray-800'}">${formatTime(coachTimer.seconds)}</span>
+                            <div class="flex items-center gap-1">
+                                <button onclick="toggleCoachPersonalTimer('${coach}')" class="${coachTimer.running ? 'bg-amber-600 hover:bg-amber-500' : 'bg-baseball-600 hover:bg-baseball-500'} text-white w-8 h-8 rounded-lg text-xs flex items-center justify-center transition" title="Toggle Personal Timer">
+                                    <i class="fa-solid ${coachTimer.running ? 'fa-pause' : 'fa-play'}"></i>
+                                </button>
+                                <button onclick="resetCoachPersonalTimer('${coach}')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-8 h-8 rounded-lg text-xs flex items-center justify-center transition" title="Reset Personal Timer">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Creator Management List & Modal Functions
+        function renderCreatorDrillsList() {
+            const container = document.getElementById('creator-drills-list');
+            if (!container) return;
+
+            container.innerHTML = state.drills.map((drill, index) => `
+                <div class="bg-baseball-850 border border-gray-800 rounded-2xl p-4 sm:p-5 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center space-x-3">
+                            <span class="w-7 h-7 rounded-lg bg-baseball-500/20 border border-baseball-500/30 text-baseball-400 flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                            <h4 class="font-bold text-white text-base">${drill.title} <span class="text-xs text-gray-400 font-normal ml-2">(${drill.durationMin} mins)</span></h4>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditDrillModal(${index})" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-semibold">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </button>
+                            <button onclick="deleteDrill(${index})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-semibold">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-300 leading-relaxed">${drill.description}</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-gray-800">
+                        ${COACHES.map(c => `
+                            <div class="bg-baseball-950 p-2 rounded-xl border border-gray-800/80">
+                                <span class="text-[10px] text-baseball-400 uppercase font-bold">${c}</span>
+                                <p class="text-xs text-gray-200 truncate mt-0.5">${drill.roles[c] || 'General'}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddDrillModal() {
+            document.getElementById('modal-title').innerText = "Add New Practice Drill";
+            document.getElementById('edit-drill-id').value = "";
+            document.getElementById('form-title').value = "";
+            document.getElementById('form-duration').value = "10";
+            document.getElementById('form-desc').value = "";
+            renderModalRoleInputs({});
+            document.getElementById('drill-modal').classList.remove('hidden');
+            document.getElementById('drill-modal').classList.add('flex');
+        }
+
+        function openEditDrillModal(index) {
+            const drill = state.drills[index];
+            document.getElementById('modal-title').innerText = `Edit Drill: ${drill.title}`;
+            document.getElementById('edit-drill-id').value = index;
+            document.getElementById('form-title').value = drill.title;
+            document.getElementById('form-duration').value = drill.durationMin;
+            document.getElementById('form-desc').value = drill.description;
+            renderModalRoleInputs(drill.roles);
+            document.getElementById('drill-modal').classList.remove('hidden');
+            document.getElementById('drill-modal').classList.add('flex');
+        }
+
+        function closeDrillModal() {
+            document.getElementById('drill-modal').classList.add('hidden');
+            document.getElementById('drill-modal').classList.remove('flex');
+        }
+
+        function renderModalRoleInputs(currentRoles) {
+            const container = document.getElementById('form-roles-container');
+            container.innerHTML = COACHES.map(coach => `
+                <div>
+                    <label class="block text-[11px] font-bold uppercase text-baseball-400 mb-1">${coach}'s Role</label>
+                    <input type="text" id="role-input-${coach}" value="${currentRoles[coach] || ''}" placeholder="e.g., Lead Coach" class="w-full bg-baseball-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-baseball-500">
+                </div>
+            `).join('');
+        }
+
+        function saveDrill(event) {
+            event.preventDefault();
+            const editIndex = document.getElementById('edit-drill-id').value;
+            const title = document.getElementById('form-title').value.trim();
+            const durationMin = parseInt(document.getElementById('form-duration').value) || 10;
+            const description = document.getElementById('form-desc').value.trim();
+
+            const roles = {};
+            COACHES.forEach(coach => {
+                roles[coach] = document.getElementById(`role-input-${coach}`).value.trim() || "General Assistant";
+            });
+
+            if (editIndex === "") {
+                // Add new drill
+                state.drills.push({
+                    id: Date.now(),
+                    title,
+                    durationMin,
+                    description,
+                    roles
+                });
+                showToast("Drill Added", "New drill created successfully.", "emerald");
+            } else {
+                // Update existing drill
+                const idx = parseInt(editIndex);
+                state.drills[idx] = {
+                    ...state.drills[idx],
+                    title,
+                    durationMin,
+                    description,
+                    roles
+                };
+                showToast("Drill Updated", "Drill changes saved successfully.", "emerald");
+            }
+
+            saveToLocalStorage();
+            closeDrillModal();
+            renderApp();
+        }
+
+        function deleteDrill(index) {
+            if (state.drills.length <= 1) {
+                showToast("Cannot Delete", "Practice must contain at least one drill.", "red");
+                return;
+            }
+            if (confirm("Are you sure you want to delete this drill?")) {
+                state.drills.splice(index, 1);
+                if (state.currentDrillIndex >= state.drills.length) {
+                    state.currentDrillIndex = state.drills.length - 1;
+                }
+                saveToLocalStorage();
+                renderApp();
+                showToast("Drill Deleted", "Drill removed from practice schedule.", "emerald");
+            }
+        }
+
+        function resetToDefaultTemplate() {
+            if (confirm("Reset practice schedule back to default template?")) {
+                state.drills = JSON.parse(JSON.stringify(DEFAULT_PRACTICE));
+                state.currentDrillIndex = 0;
+                state.timerSecondsRemaining = state.drills[0].durationMin * 60;
+                state.timerRunning = false;
+                saveToLocalStorage();
+                renderApp();
+                showToast("Reset Complete", "Practice schedule reset to default.", "emerald");
+            }
+        }
+
+        // Toast Notification Helper
+        function showToast(title, message, type = "emerald") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = message;
+            
+            if (type === "red") {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-x-0 transition-transform duration-300 bg-red-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-red-500";
+            } else {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-x-0 transition-transform duration-300 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-500";
+            }
+
+            setTimeout(() => {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-500";
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
